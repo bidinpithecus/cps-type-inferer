@@ -36,26 +36,18 @@ callByValueTranslate :: String -> IO ()
 callByValueTranslate s = case Parser.parseExpression s of
   Left er -> putStrLn $ "Error: " ++ show er
   Right e -> do
-    putStrLn "Lambda ADT Representation:"
-    print e
     putStrLn "Lambda Expression:"
-    print s
+    print e
     let cpsExpr = CPS.callByValueToCps e
-    putStrLn "CPS ADT Representation:"
-    print cpsExpr
     putStrLn "CPS Expression:"
-    print $ CPS.prettyPrintCPS cpsExpr
+    print cpsExpr
 
 callByNameTranslate :: String -> IO ()
 callByNameTranslate s = case Parser.parseExpression s of
   Left er -> putStrLn $ "Error: " ++ show er
   Right e -> do
-    putStrLn "Lambda ADT Representation:"
-    print e
     putStrLn "Lambda Expression:"
-    print s
+    print e
     let cpsExpr = CPS.callByNameToCps e
-    putStrLn "CPS ADT Representation:"
-    print cpsExpr
     putStrLn "CPS Expression:"
-    print $ CPS.prettyPrintCPS cpsExpr
+    print cpsExpr

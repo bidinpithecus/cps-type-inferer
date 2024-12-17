@@ -1,24 +1,7 @@
 module CPS where
 
 import Control.Monad.State (MonadState (get, put), evalState)
-import Data.List (intercalate)
 import Typing (CPS (..), Expr (..), FreshM, Id)
-
-prettyPrintCPS :: CPS -> String
-prettyPrintCPS = ppCPS
-  where
-    ppCPS :: CPS -> String
-    ppCPS (Jump k xs) =
-      k ++ "<" ++ intercalate ", " xs ++ ">"
-    ppCPS (Bind b y ys c) =
-      ppCPS b
-        ++ " { "
-        ++ y
-        ++ "<"
-        ++ intercalate ", " ys
-        ++ "> = "
-        ++ ppCPS c
-        ++ " }"
 
 freshVar :: FreshM Id
 freshVar = do
