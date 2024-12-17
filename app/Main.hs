@@ -4,7 +4,15 @@ import qualified CPS
 import qualified Parser
 
 main :: IO ()
-main = putStrLn "Hello, Haskell!"
+main = do
+  putStrLn "Enter a lambda expression:"
+  input <- getLine
+  case Parser.parseExpression input of
+    Left err -> print err
+    Right e -> do
+      let cpsExpr = CPS.callByValueToCps e
+      putStrLn "CPS Expression in call by value:"
+      print cpsExpr
 
 var :: String
 var = "x"
@@ -39,7 +47,7 @@ callByValueTranslate s = case Parser.parseExpression s of
     putStrLn "Lambda Expression:"
     print e
     let cpsExpr = CPS.callByValueToCps e
-    putStrLn "CPS Expression:"
+    putStrLn "CPS Expression in call by value:"
     print cpsExpr
 
 callByNameTranslate :: String -> IO ()
@@ -49,5 +57,5 @@ callByNameTranslate s = case Parser.parseExpression s of
     putStrLn "Lambda Expression:"
     print e
     let cpsExpr = CPS.callByNameToCps e
-    putStrLn "CPS Expression:"
+    putStrLn "CPS Expression in call by name:"
     print cpsExpr
