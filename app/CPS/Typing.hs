@@ -7,12 +7,12 @@ import Lambda.Typing
 -- ADT representing CPS terms
 -- k<x> -- That is, a call to `k` with `x` as arguments
 -- b { k<y> = c } -- That is, defining `k` in `b` as a continuation `c`, with `y` as parameters
-data CPS
+data Command
   = Jump Id [Id]
-  | Bind CPS Id [Id] CPS
+  | Bind Command Id [Id] Command
   deriving (Eq)
 
-instance Show CPS where
+instance Show Command where
   show (Jump k xs) = k ++ "<" ++ intercalate ", " xs ++ ">"
   show (Bind b y ys c) =
     let body = case b of

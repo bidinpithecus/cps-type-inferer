@@ -8,7 +8,7 @@ import Lambda.Typing
 -- [[x]] = x<k>
 -- [[\x.e]] = k<v> { v<x, k> = [[e]] }
 -- [[f e]] = [[f]] { k<f> = f<v, k> { k<v> = [[e]] } }
-callByName :: Expr -> Id -> FreshM CPS
+callByName :: Expr -> Id -> FreshM Command
 callByName (Var x) k = return $ Jump x [k] -- x<k>
 callByName (Lam x e) k = do
   v <- freshVar -- v
@@ -24,14 +24,14 @@ callByName (App f e) k = do
   let innerBind = Bind c k [v2] e' -- c { k<v> = [[e]] }
   return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = f<v, k> { k<v> = [[e]] } }
 
-callByNameToCps :: Expr -> CPS
+callByNameToCps :: Expr -> Command
 callByNameToCps expr = evalState (callByName expr "k") 0
 
 -- Plotkin's call-by-value translation:
 -- [[x]] = k<x>
 -- [[\x.e]] = k<v> { v<x, k> = [[e]] }
 -- [[f e]] = [[f]] { k<f> = [[e]] { k<v> = f<v, k> } }
-callByValue :: Expr -> Id -> FreshM CPS
+callByValue :: Expr -> Id -> FreshM Command
 callByValue (Var x) k = return $ Jump k [x] -- k<x>
 callByValue (Lam x e) k = do
   v <- freshVar -- v
@@ -47,5 +47,5 @@ callByValue (App f e) k = do
   let innerBind = Bind e' k [v2] c -- [[e]] { k<v> = c }
   return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = [[e]] { k<v> = f<v, k> } }
 
-callByValueToCps :: Expr -> CPS
+callByValueToCps :: Expr -> Command
 callByValueToCps expr = evalState (callByValue expr "k") 0
