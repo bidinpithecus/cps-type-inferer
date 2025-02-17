@@ -1,9 +1,9 @@
-module Parser where
+module Lambda.Parser where
 
+import Lambda.Typing
 import Lexer
 import Text.Parsec
 import Text.Parsec.String (Parser)
-import Typing
 
 parseExpression :: String -> Either ParseError Expr
 parseExpression = parse parseExpr "Erro:"

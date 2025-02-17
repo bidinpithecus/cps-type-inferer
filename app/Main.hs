@@ -1,16 +1,16 @@
 module Main where
 
-import qualified CPS
-import qualified Parser
+import qualified CPS.Translation as CpsTranslation
+import qualified Lambda.Parser as LambdaParser
 
 main :: IO ()
 main = do
   putStrLn "Enter a lambda expression:"
   input <- getLine
-  case Parser.parseExpression input of
+  case LambdaParser.parseExpression input of
     Left err -> print err
     Right e -> do
-      let cpsExpr = CPS.callByValueToCps e
+      let cpsExpr = CpsTranslation.callByValueToCps e
       putStrLn "CPS Expression in call by value:"
       print cpsExpr
 
@@ -36,26 +36,26 @@ churchTwo :: String
 churchTwo = "\\f. \\x. f (f x)"
 
 parseExpr :: String -> IO ()
-parseExpr s = case Parser.parseExpression s of
+parseExpr s = case LambdaParser.parseExpression s of
   Left er -> print er
   Right e -> print e
 
 callByValueTranslate :: String -> IO ()
-callByValueTranslate s = case Parser.parseExpression s of
+callByValueTranslate s = case LambdaParser.parseExpression s of
   Left er -> putStrLn $ "Error: " ++ show er
   Right e -> do
     putStrLn "Lambda Expression:"
     print e
-    let cpsExpr = CPS.callByValueToCps e
+    let cpsExpr = CpsTranslation.callByValueToCps e
     putStrLn "CPS Expression in call by value:"
     print cpsExpr
 
 callByNameTranslate :: String -> IO ()
-callByNameTranslate s = case Parser.parseExpression s of
+callByNameTranslate s = case LambdaParser.parseExpression s of
   Left er -> putStrLn $ "Error: " ++ show er
   Right e -> do
     putStrLn "Lambda Expression:"
     print e
-    let cpsExpr = CPS.callByNameToCps e
+    let cpsExpr = CpsTranslation.callByNameToCps e
     putStrLn "CPS Expression in call by name:"
     print cpsExpr

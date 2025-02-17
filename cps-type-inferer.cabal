@@ -58,13 +58,13 @@ executable cps-type-inferer
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:    Lexer, Typing, Parser, CPS
+    other-modules:    CPS.Typing, CPS.Inferer, CPS.Translation, Lambda.Parser, Lambda.Typing, Lexer
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    mtl, parsec, base ^>=4.17.2.1
+    build-depends:    mtl, parsec, containers, base ^>=4.17.2.1
 
     -- Directories containing source files.
     hs-source-dirs:   app
