@@ -28,10 +28,16 @@ instance Show Expr where
      in e1 ++ " " ++ e2
 
 -- Fresh variables
-type FreshM a = State Int a
+type FreshM a = State (Int, Int) a
 
 freshVar :: FreshM Id
 freshVar = do
-  n <- get
-  put (n + 1)
-  return $ "v" ++ show n
+  (vCount, kCount) <- get
+  put (vCount + 1, kCount)
+  return $ "v" ++ show vCount
+
+freshCont :: FreshM Id
+freshCont = do
+  (vCount, kCount) <- get
+  put (vCount, kCount + 1)
+  return $ "k" ++ show kCount
