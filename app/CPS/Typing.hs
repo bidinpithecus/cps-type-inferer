@@ -13,12 +13,27 @@ data Command
   deriving (Eq)
 
 instance Show Command where
-  show (Jump k xs) = k ++ "<" ++ intercalate ", " xs ++ ">"
-  show (Bind b y ys c) =
-    let body = case b of
-          Bind {} -> "(" ++ show b ++ ")"
-          _ -> show b
-     in body ++ " { " ++ y ++ "<" ++ intercalate ", " ys ++ "> = " ++ show c ++ "}"
+  show = showThielecke
+
+-- k⟨ ⃗x⟩
+-- b { k⟨ ⃗y⟩ c }
+showAppel :: Command -> String
+showAppel (Jump k xs) = k ++ "<" ++ intercalate ", " xs ++ ">"
+showAppel (Bind b y ys c) =
+  let body = case b of
+        Bind {} -> "(" ++ showAppel b ++ ")"
+        _ -> showAppel b
+   in body ++ " { " ++ y ++ "<" ++ intercalate ", " ys ++ "> = " ++ showAppel c ++ "}"
+
+-- k( ⃗x)
+-- let k( ⃗y) = c in b
+showThielecke :: Command -> String
+showThielecke (Jump k xs) = k ++ "(" ++ intercalate ", " xs ++ ")"
+showThielecke (Bind b y ys c) =
+  let body = case b of
+        Bind {} -> "(" ++ showThielecke b ++ ")"
+        _ -> showThielecke b
+   in "let " ++ y ++ "(" ++ intercalate ", " ys ++ ") = " ++ showThielecke c ++ " in " ++ body
 
 -- ADT represeting CPS Monotype in the Polymorphic Type system types
 -- TVar String -- That is, a type variable (α)
