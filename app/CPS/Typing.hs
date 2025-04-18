@@ -15,6 +15,9 @@ data Command
 instance Show Command where
   show = showThielecke
 
+initialCont :: Id
+initialCont = "k"
+
 -- | Appel-style notation: k⟨x₁, ..., xₙ⟩ and b { k⟨y₁, ..., yₙ⟩ = c }
 showAppel :: Command -> String
 showAppel (Jump k xs) = k ++ "<" ++ intercalate ", " xs ++ ">"

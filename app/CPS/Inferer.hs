@@ -8,7 +8,7 @@ import qualified Data.Map as Map
 import Data.List (nub)
 import Text.Read (readMaybe)
 import CPS.Typing
-    ( Command(..), Context, MonoType(..), PolyType(..), Substitution )
+    ( Command(..), Context, MonoType(..), PolyType(..), Substitution, initialCont )
 import Lambda.Typing (Id)
 
 -- | Type inference errors
@@ -206,8 +206,16 @@ inferCommand ctx (Bind b y ys c) = do
 --   2. Infer substitution `subst` for the command
 --   3. Apply `subst` to the initial context
 --   4. Return final substitution and context
-inferWithCtx :: Command -> TI (Substitution, Context)
+inferWithCtx :: Command -> TI PolyType
 inferWithCtx cmd = do
-  ctx <- Map.singleton "k" . Forall [] <$> freshTVar
+  initialType <- freshTVar
+  let ctx = Map.singleton initialCont (Forall [] initialType)
+  
   subst <- inferCommand ctx cmd
-  return (subst, applySubstToContext subst ctx)
+  let finalCtx = applySubstToContext subst ctx
+  
+  case Map.lookup initialCont finalCtx of
+    Just (Forall _ monoType) -> 
+      let generalized = generalize (Map.delete initialCont finalCtx) monoType
+      in return generalized
+    Nothing -> throwError (UnboundVariable initialCont)
