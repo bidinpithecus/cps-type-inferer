@@ -3,57 +3,52 @@ module Main where
 import qualified CPS.Translation as CpsTranslation
 import qualified CPS.Inferer as CpsInferer
 import qualified Lambda.Parser as LambdaParser
+import qualified Lambda.Inferer as LambdaInferer
+import qualified CPS.Translation as CPSTranslation
 
 main :: IO ()
 main = do
   putStrLn "Enter a lambda expression:"
   input <- getLine
-  -- let input = lambdaId
-  case LambdaParser.parseExpression input of
-    Left err -> print err
-    Right e -> do
-      let cbvCpsExpr = CpsTranslation.callByValueToCps e
-      let cbvResult = CpsInferer.runTI (CpsInferer.inferWithCtx cbvCpsExpr)
-
-      let cbnCpsExpr = CpsTranslation.callByNameToCps e
-      let cbnResult = CpsInferer.runTI (CpsInferer.inferWithCtx cbnCpsExpr)
-
-      putStrLn "Lambda Expression:"
-      print e
-
-      putStrLn "\nCall-by-value CPS Translation:"
-      print cbvCpsExpr
-      putStrLn "Inferred Type:"
-      either print print cbvResult
-
-      putStrLn "\nCall-by-name CPS Translation:"
-      print cbnCpsExpr
-      putStrLn "Inferred Type:"
-      either print print cbnResult
+  main2 input
 
 main2 :: String -> IO ()
 main2 input = do
+  mainHelper input
+
+mainHelper :: String -> IO ()
+mainHelper input = 
   case LambdaParser.parseExpression input of
     Left err -> print err
     Right e -> do
-      let cbvCpsExpr = CpsTranslation.callByValueToCps e
-      let cbvResult = CpsInferer.runTI (CpsInferer.inferWithCtx cbvCpsExpr)
+      let (lambdaInferedType, _) = LambdaInferer.inferExpr e
+      let cbvExpected = CPSTranslation.cbvTypeTranslation lambdaInferedType
+      let cbnExpected = CPSTranslation.cbnTypeTranslation lambdaInferedType
 
-      let cbnCpsExpr = CpsTranslation.callByNameToCps e
-      let cbnResult = CpsInferer.runTI (CpsInferer.inferWithCtx cbnCpsExpr)
+      let cbvCpsExpr = CpsTranslation.cbvExprTranslation e
+      let cbvActual = CpsInferer.runTI (CpsInferer.inferWithCtx cbvCpsExpr)
+
+      let cbnCpsExpr = CpsTranslation.cbnExprTranslation e
+      let cbnActual = CpsInferer.runTI (CpsInferer.inferWithCtx cbnCpsExpr)
 
       putStrLn "Lambda Expression:"
       print e
+      putStrLn "Lambda Type:"
+      print lambdaInferedType
 
       putStrLn "\nCall-by-value CPS Translation:"
       print cbvCpsExpr
+      putStrLn "Expected Type:"
+      print cbvExpected
       putStrLn "Inferred Type:"
-      either print print cbvResult
+      either print print cbvActual
 
       putStrLn "\nCall-by-name CPS Translation:"
       print cbnCpsExpr
+      putStrLn "Expected Type:"
+      print cbnExpected
       putStrLn "Inferred Type:"
-      either print print cbnResult
+      either print print cbnActual
 
 var :: String
 var = "x"

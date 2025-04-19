@@ -9,7 +9,8 @@ import Data.List (nub)
 import Text.Read (readMaybe)
 import CPS.Typing
     ( Command(..), Context, MonoType(..), PolyType(..), Substitution, initialCont )
-import Lambda.Typing (Id)
+import Utils.Typing (greekVar, Id, greekLetters)
+import qualified Data.Maybe
 
 -- | Type inference errors
 data TypeError
@@ -21,17 +22,6 @@ data TypeError
 
 -- | Type inference monad: State for fresh variables + Except for errors
 type TI a = StateT Int (Except TypeError) a
-
-greekLetters :: [String]
-greekLetters = ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ",
-                "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω"]
-
--- | Generate fresh type variable names using Greek letters
-greekVar :: Int -> String
-greekVar n =
-  let (q, r) = n `divMod` length greekLetters
-      suffix = if q == 0 then "" else show (q - 1)
-  in greekLetters !! r ++ suffix
 
 runTI :: TI a -> Either TypeError a
 runTI m = runExcept (evalStateT m 0)
@@ -210,12 +200,28 @@ inferWithCtx :: Command -> TI PolyType
 inferWithCtx cmd = do
   initialType <- freshTVar
   let ctx = Map.singleton initialCont (Forall [] initialType)
-  
+
   subst <- inferCommand ctx cmd
   let finalCtx = applySubstToContext subst ctx
-  
+
   case Map.lookup initialCont finalCtx of
-    Just (Forall _ monoType) -> 
+    Just (Forall _ monoType) ->
       let generalized = generalize (Map.delete initialCont finalCtx) monoType
-      in return generalized
+          normalized = normalizePolyType generalized
+      in return normalized
     Nothing -> throwError (UnboundVariable initialCont)
+
+-- | Normalize quantified variables to α, β, γ, etc.
+normalizePolyType :: PolyType -> PolyType
+normalizePolyType (Forall vars t) =
+  let newVars = take (length vars) greekLetters
+      subst   = zip vars newVars
+      t'      = applySubstToMono subst t
+  in Forall newVars t'
+
+applySubstToMono :: [(String, String)] -> MonoType -> MonoType
+applySubstToMono subst = go
+  where
+    go (TVar v)     = TVar $ Data.Maybe.fromMaybe v (lookup v subst)
+    go TInt         = TInt
+    go (TNeg ts)    = TNeg (map go ts)

@@ -1,8 +1,13 @@
+{-# LANGUAGE LambdaCase #-}
 module CPS.Translation where
 
 import CPS.Typing
-import Control.Monad.State (evalState)
+    ( initialCont, Command(..), MonoType(TNeg, TVar), PolyType(..) )
+import Control.Monad.State ( modify, evalState, runState, State )
 import Lambda.Typing
+    ( SimpleType(..), Expr(..), FreshM, freshVar, freshCont )
+import qualified Data.Set as S
+import Utils.Typing (Id)
 
 -- Plotkin's call-by-name translation:
 -- [[x]] = x<k>
@@ -26,8 +31,8 @@ callByName (App f e) k = do
   let innerBind = Bind c k' [v2] e' -- c { k'<v> = [[e]] }
   return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = f<v, k> { k<v> = [[e]] } }
 
-callByNameToCps :: Expr -> Command
-callByNameToCps expr = evalState (callByName expr "k") (0, 0)
+cbnExprTranslation :: Expr -> Command
+cbnExprTranslation expr = evalState (callByName expr initialCont) (0, 0)
 
 -- Plotkin's call-by-value translation:
 -- [[x]] = k<x>
@@ -51,5 +56,38 @@ callByValue (App f e) k = do
   let innerBind = Bind e' k' [v2] c -- [[e]] { k'<v> = c }
   return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = [[e]] { k'<v> = f<v, k> } }
 
-callByValueToCps :: Expr -> Command
-callByValueToCps expr = evalState (callByValue expr "k") (0, 0)
+cbvExprTranslation :: Expr -> Command
+cbvExprTranslation expr = evalState (callByValue expr initialCont) (0, 0)
+
+-- | Call-by-Name CPS type translation
+cbnTypeTranslation :: SimpleType -> PolyType
+cbnTypeTranslation st =
+  let (translatedMono, freeVars) = runState (cbnTranslate st) S.empty
+  in Forall (S.toList freeVars) translatedMono
+  where
+    cbnTranslate :: SimpleType -> State (S.Set String) MonoType
+    cbnTranslate = \case
+      Lambda.Typing.TVar varId -> do
+        modify (S.insert varId)
+        return $ TNeg [CPS.Typing.TVar varId]
+      TArr a b -> do
+        a' <- cbnTranslate a
+        b' <- cbnTranslate b
+        return $ TNeg [TNeg [TNeg [a'], b']]
+
+-- | Call-by-Value CPS type translation
+cbvTypeTranslation :: SimpleType -> PolyType
+cbvTypeTranslation st =
+  let (translatedMono, freeVars) = runState (cbvTranslate st) S.empty
+      finalMono = TNeg [translatedMono]
+  in Forall (S.toList freeVars) finalMono
+  where
+    cbvTranslate :: SimpleType -> State (S.Set String) MonoType
+    cbvTranslate = \case
+      Lambda.Typing.TVar varId -> do
+        modify (S.insert varId)
+        return $ CPS.Typing.TVar varId
+      TArr a b -> do
+        a' <- cbvTranslate a
+        b' <- cbvTranslate b
+        return $ TNeg [a', TNeg [b']]

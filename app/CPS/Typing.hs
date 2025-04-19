@@ -2,7 +2,7 @@ module CPS.Typing where
 
 import Data.List (intercalate)
 import qualified Data.Map as Map
-import Lambda.Typing ( Id )
+import Utils.Typing ( Id )
 
 -- | CPS Commands:
 --   * Jump to continuation with arguments: k⟨x₁, ..., xₙ⟩

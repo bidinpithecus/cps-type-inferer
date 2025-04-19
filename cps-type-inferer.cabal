@@ -58,7 +58,7 @@ executable cps-type-inferer
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules:    CPS.Typing, CPS.Inferer, CPS.Translation, Lambda.Parser, Lambda.Typing, Lexer
+    other-modules:    Utils.Typing, CPS.Typing, CPS.Inferer, CPS.Translation, Lambda.Parser, Lambda.Typing, Lambda.Inferer, Lexer
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
