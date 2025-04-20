@@ -33,7 +33,7 @@ mainHelper input =
 
       putStrLn "Lambda Expression:"
       print e
-      putStrLn "Lambda Type:"
+      putStrLn "Expression Type:"
       print lambdaInferedType
 
       putStrLn "\nCall-by-value CPS Translation:"

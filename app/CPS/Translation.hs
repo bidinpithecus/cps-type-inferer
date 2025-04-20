@@ -10,51 +10,57 @@ import qualified Data.Set as S
 import Utils.Typing (Id)
 
 -- Plotkin's call-by-name translation:
--- [[x]] = x<k>
--- [[\x.e]] = k<v> { v<x, k> = [[e]] }
--- [[f e]] = [[f]] { k<f> = f<v, k> { k<v> = [[e]] } }
+-- [[x]]   = x(k)
+-- [[λx.e]] = k(v) { v(x, k') = [[e]] }
+-- [[f e]] = [[f]] { k(f) = f(v, k') { k'(v) = [[e]] } }
 callByName :: Expr -> Id -> FreshM Command
-callByName (Var x) k = return $ Jump x [k] -- x<k>
+callByName (Var x) k = return $ Jump x [k]  -- x(k)
 callByName (Lam x e) k = do
-  v <- freshVar -- v
-  k' <- freshCont
-  let b = Jump k [v] -- k<v>
-  c <- callByName e k' -- [[e]]
-  return $ Bind b v [x, k'] c -- k<v> { v<x, k'> = [[e]] }
+  v <- freshVar  -- Fresh variable for the lambda abstraction
+  k' <- freshCont  -- Fresh continuation for the body
+  let bindBody = Jump k [v]  -- k(v)
+  body <- callByName e k'  -- [[e]] under k'
+  return $ Bind bindBody v [x, k'] body  -- k(v) { v(x, k') = [[e]] }
 callByName (App f e) k = do
-  v1 <- freshVar -- f
-  v2 <- freshVar -- v
-  k' <- freshCont
-  f' <- callByName f k -- [[f]]
-  e' <- callByName e k' -- [[e]]
-  let c = Jump v1 [v2, k] -- f<v, k>
-  let innerBind = Bind c k' [v2] e' -- c { k'<v> = [[e]] }
-  return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = f<v, k> { k<v> = [[e]] } }
+  funcCont <- freshCont  -- Continuation to receive the function
+  funcVar <- freshVar  -- Variable to hold the function from f
+  argVar <- freshVar  -- Argument variable for the application
+  argCont <- freshCont  -- Continuation for the argument e
+
+  fTrans <- callByName f funcCont  -- [[f]] with continuation funcCont
+  let appCmd = Jump funcVar [argVar, argCont]
+  eTrans <- callByName e argCont  -- [[e]] with continuation argCont
+  let innerBind = Bind appCmd argCont [argVar] eTrans
+  let outerBind = Bind fTrans k [funcVar] innerBind
+  return outerBind  -- [[f]] { k(funcVar) = ... }
 
 cbnExprTranslation :: Expr -> Command
 cbnExprTranslation expr = evalState (callByName expr initialCont) (0, 0)
 
 -- Plotkin's call-by-value translation:
--- [[x]] = k<x>
--- [[\x.e]] = k<v> { v<x, k> = [[e]] }
--- [[f e]] = [[f]] { k<f> = [[e]] { k<v> = f<v, k> } }
+-- [[x]]   = k(x)
+-- [[λx.e]] = k(v) { v(x, k') = [[e]] }
+-- [[f e]] = [[f]] { k(f) = [[e]] { k'(v) = f(v, k) } }
 callByValue :: Expr -> Id -> FreshM Command
-callByValue (Var x) k = do return $ Jump k [x] -- k<x>
+callByValue (Var x) k = return $ Jump k [x]  -- k(x)
 callByValue (Lam x e) k = do
-  v <- freshVar -- v
-  k' <- freshCont
-  let b = Jump k [v] -- k<v>
-  c <- callByValue e k' -- [[e]]
-  return $ Bind b v [x, k'] c -- k<v> { v<x, k'> = [[e]] }
+  v <- freshVar  -- Fresh variable for the lambda abstraction
+  k' <- freshCont  -- Fresh continuation for the body
+  let bindBody = Jump k [v]  -- k(v)
+  body <- callByValue e k'  -- [[e]] under k'
+  return $ Bind bindBody v [x, k'] body  -- k(v) { v(x,k')=[[e]] }
 callByValue (App f e) k = do
-  v1 <- freshVar -- f
-  v2 <- freshVar -- v
-  k' <- freshCont
-  f' <- callByValue f k -- [[f]]
-  e' <- callByValue e k' -- [[e]]
-  let c = Jump v1 [v2, k] -- f<v, k>
-  let innerBind = Bind e' k' [v2] c -- [[e]] { k'<v> = c }
-  return $ Bind f' k [v1] innerBind -- [[f]] { k<f> = [[e]] { k'<v> = f<v, k> } }
+  funcVar <- freshVar  -- Variable to hold the function result (v1)
+  funcCont <- freshCont  -- Continuation for the function (k1)
+  argVar <- freshVar  -- Variable to hold the argument result (v2)
+  argCont <- freshCont  -- Continuation for the argument (k2)
+
+  fTrans <- callByValue f funcCont
+  eTrans <- callByValue e argCont
+  let appCmd = Jump funcVar [argVar, k]
+  let argBind = Bind appCmd argCont [argVar] eTrans
+  let funcBind = Bind fTrans funcCont [funcVar] argBind
+  return funcBind  -- [[f]] { k1(funcVar) = [[e]] { k2(argVar) = funcVar(argVar,k) } }
 
 cbvExprTranslation :: Expr -> Command
 cbvExprTranslation expr = evalState (callByValue expr initialCont) (0, 0)
