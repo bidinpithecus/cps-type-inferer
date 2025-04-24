@@ -44,8 +44,7 @@ showThielecke' (Bind b y ys c) indent =
       cStr = showThielecke' c (indent + 4)
       inLine = replicate indent ' ' ++ "in"
       bodyStr = showThielecke' b (indent + 4)
-  in unlines [letLine, cStr, inLine, bodyStr]
-
+  in intercalate "\n" [letLine, cStr, inLine, bodyStr]
 
 -- | CPS Monotypes:
 --   * Type variables (α), integers (int), negation types (¬[τ])

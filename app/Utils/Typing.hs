@@ -2,6 +2,10 @@ module Utils.Typing where
 
 type Id = String
 
+data CallStyle = 
+  CBV
+  | CBN
+
 greekLetters :: [String]
 greekLetters = ["α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ", "λ", "μ",
                 "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ", "φ", "χ", "ψ", "ω"]

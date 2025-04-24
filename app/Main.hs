@@ -1,10 +1,12 @@
 module Main where
 
-import qualified CPS.Translation as CpsTranslation
 import qualified CPS.Inferer as CpsInferer
 import qualified Lambda.Parser as LambdaParser
 import qualified Lambda.Inferer as LambdaInferer
 import qualified CPS.Translation as CPSTranslation
+import qualified Lambda.Typing as LambdaTyping
+import qualified Utils.Typing as Utils
+import qualified CPS.Typing as CpsInferer
 
 main :: IO ()
 main = do
@@ -17,38 +19,71 @@ main2 input = do
   mainHelper input
 
 mainHelper :: String -> IO ()
-mainHelper input = 
+mainHelper input =
   case LambdaParser.parseExpression input of
     Left err -> print err
-    Right e -> do
-      let (lambdaInferedType, _) = LambdaInferer.inferExpr e
-      let cbvExpected = CPSTranslation.cbvTypeTranslation lambdaInferedType
-      let cbnExpected = CPSTranslation.cbnTypeTranslation lambdaInferedType
+    Right lambdaExpr -> do
+      putStrLn "Expression:"
+      print lambdaExpr
 
-      let cbvCpsExpr = CpsTranslation.cbvExprTranslation e
-      let cbvActual = CpsInferer.runTI (CpsInferer.inferWithCtx cbvCpsExpr)
+      putStrLn "Call-by-Name Translation:"
+      inferAndCheck lambdaExpr Utils.CBN
+      putStrLn "\nCall-by-Value Translation:"
+      inferAndCheck lambdaExpr Utils.CBV
 
-      let cbnCpsExpr = CpsTranslation.cbnExprTranslation e
-      let cbnActual = CpsInferer.runTI (CpsInferer.inferWithCtx cbnCpsExpr)
+inferAndCheck :: LambdaTyping.Expr -> Utils.CallStyle -> IO ()
+inferAndCheck expr callStyle = do
+  let (lambdaType, _) = LambdaInferer.inferExpr expr
+      (expectedCPSType, command) = getTypeAndCommand callStyle lambdaType expr
 
-      putStrLn "Lambda Expression:"
-      print e
-      putStrLn "Expression Type:"
-      print lambdaInferedType
+  putStrLn "Command:"
+  print command
+  putStrLn "Expected Type:"
+  print expectedCPSType
 
-      putStrLn "\nCall-by-value CPS Translation:"
-      print cbvCpsExpr
-      putStrLn "Expected Type:"
-      print cbvExpected
-      putStrLn "Inferred Type:"
-      either print print cbvActual
+  handleInferenceResult command expectedCPSType
 
-      putStrLn "\nCall-by-name CPS Translation:"
-      print cbnCpsExpr
-      putStrLn "Expected Type:"
-      print cbnExpected
-      putStrLn "Inferred Type:"
-      either print print cbnActual
+getTypeAndCommand :: Utils.CallStyle -> LambdaTyping.SimpleType -> LambdaTyping.Expr 
+                  -> (CpsInferer.PolyType, CpsInferer.Command)
+getTypeAndCommand callStyle lambdaType expr =
+  case callStyle of
+    Utils.CBN -> (CPSTranslation.cbnTypeTranslation lambdaType, 
+                 CPSTranslation.cbnExprTranslation expr)
+    Utils.CBV -> (CPSTranslation.cbvTypeTranslation lambdaType,
+                 CPSTranslation.cbvExprTranslation expr)
+
+handleInferenceResult :: CpsInferer.Command -> CpsInferer.PolyType -> IO ()
+handleInferenceResult command expectedType = do
+  let inferredType = CpsInferer.runTI (CpsInferer.inferWithCtx command)
+  
+  case inferredType of
+    Left err -> handleInferenceError err
+    Right inferredType' -> handleSuccessfulInference inferredType' expectedType
+
+handleInferenceError :: CpsInferer.TypeError -> IO ()
+handleInferenceError err = do
+  putStrLn "Type Error in Inference:"
+  print err
+
+handleSuccessfulInference :: CpsInferer.PolyType -> CpsInferer.PolyType -> IO ()
+handleSuccessfulInference inferredType expectedType = do
+  putStrLn "Inferred Type:"
+  print inferredType
+  case CpsInferer.isSubtypeOfPoly inferredType expectedType of
+    Left err -> handleSubtypeError err
+    Right maybeSubtype -> handleSubtypeResult maybeSubtype
+
+handleSubtypeError :: CpsInferer.TypeError -> IO ()
+handleSubtypeError err = do
+  putStrLn "Type Error in Subtyping Check:"
+  print err
+
+handleSubtypeResult :: Maybe a -> IO ()
+handleSubtypeResult maybeSubtype = do
+  putStrLn "Do the types match?"
+  case maybeSubtype of
+    Nothing -> putStrLn "No"
+    Just _ -> putStrLn "Yes"
 
 var :: String
 var = "x"

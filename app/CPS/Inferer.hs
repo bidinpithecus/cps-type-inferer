@@ -11,6 +11,7 @@ import CPS.Typing
     ( Command(..), Context, MonoType(..), PolyType(..), Substitution, initialCont )
 import Utils.Typing (greekVar, Id, greekLetters)
 import qualified Data.Maybe
+import Control.Monad (foldM, replicateM)
 
 -- | Type inference errors
 data TypeError
@@ -225,3 +226,29 @@ applySubstToMono subst = go
     go (TVar v)     = TVar $ Data.Maybe.fromMaybe v (lookup v subst)
     go TInt         = TInt
     go (TNeg ts)    = TNeg (map go ts)
+
+isSubtypeOfPoly :: PolyType -> PolyType -> Either TypeError (Maybe Substitution)
+isSubtypeOfPoly (Forall vars1 t1) (Forall vars2 t2) = 
+  runTI $ do
+    freshVars1 <- replicateM (length vars1) freshTVar
+    let subst1 = Map.fromList (zip vars1 freshVars1)
+    freshVars2 <- replicateM (length vars2) freshTVar
+    let subst2 = Map.fromList (zip vars2 freshVars2)
+    pure $ isSubtypeOf (applySubst subst1 t1) (applySubst subst2 t2)
+
+isSubtypeOf :: MonoType -> MonoType -> Maybe Substitution
+isSubtypeOf t1 t2 = match t1 t2 Map.empty
+  where
+    match :: MonoType -> MonoType -> Substitution -> Maybe Substitution
+    match (TVar a) t subst =
+        case Map.lookup a subst of
+            Just tExisting -> if tExisting == t then Just subst else Nothing
+            Nothing ->
+                if occursCheck a t
+                    then Nothing
+                    else Just (Map.insert a t subst)
+    match TInt TInt subst = Just subst
+    match (TNeg ts1) (TNeg ts2) subst
+        | length ts1 == length ts2 = foldM (\s (t1', t2') -> match t1' t2' s) subst (zip ts1 ts2)
+        | otherwise = Nothing
+    match _ _ _ = Nothing
