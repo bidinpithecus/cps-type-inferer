@@ -26,8 +26,13 @@ mainHelper input =
       putStrLn "Expression:"
       print lambdaExpr
 
+      putStrLn "Type:"
+      let (lambdaType, _) = LambdaInferer.inferExpr lambdaExpr
+      print lambdaType
+
       putStrLn "Call-by-Name Translation:"
       inferAndCheck lambdaExpr Utils.CBN
+
       putStrLn "\nCall-by-Value Translation:"
       inferAndCheck lambdaExpr Utils.CBV
 

@@ -18,7 +18,7 @@ data TypeError
   = OccursCheck String MonoType
   | Mismatch MonoType MonoType
   | ArityMismatch [MonoType] [MonoType]
-  | UnboundVariable String
+  | UnboundVariable String Context
   deriving (Show)
 
 -- | Type inference monad: State for fresh variables + Except for errors
@@ -152,7 +152,7 @@ inferAtom ctx x =
                  Just poly -> do
                    t <- instantiate poly
                    return (Map.empty, t)
-                 Nothing -> throwError $ UnboundVariable x
+                 Nothing -> throwError $ UnboundVariable x ctx
 
 -- | Extend context with parameters and their types
 extendContextWithParams :: Context -> [Id] -> [MonoType] -> Context
@@ -210,7 +210,7 @@ inferWithCtx cmd = do
       let generalized = generalize (Map.delete initialCont finalCtx) monoType
           normalized = normalizePolyType generalized
       in return normalized
-    Nothing -> throwError (UnboundVariable initialCont)
+    Nothing -> throwError (UnboundVariable initialCont ctx)
 
 -- | Normalize quantified variables to α, β, γ, etc.
 normalizePolyType :: PolyType -> PolyType
