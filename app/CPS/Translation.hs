@@ -4,10 +4,9 @@ module CPS.Translation where
 import CPS.Typing
     ( initialCont, Command(..), MonoType(TNeg, TVar), PolyType(..) )
 import Control.Monad.State ( modify, evalState, runState, State )
-import Lambda.Typing
-    ( SimpleType(..), Expr(..), FreshM, freshVar, freshCont )
+import Lambda.Typing ( SimpleType(..), Expr(..) )
 import qualified Data.Set as S
-import Utils.Typing (Id)
+import Utils.Typing ( Id, FreshM, freshVar, freshCont )
 
 -- Plotkin's call-by-name translation:
 -- [[x]]   = x(k)

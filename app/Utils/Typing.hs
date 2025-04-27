@@ -1,4 +1,19 @@
 module Utils.Typing where
+import Control.Monad.State (State, MonadState (get, put))
+
+type FreshM a = State (Int, Int) a
+
+freshVar :: FreshM Id
+freshVar = do
+  (vCount, kCount) <- get
+  put (vCount + 1, kCount)
+  return $ "v" ++ show vCount
+
+freshCont :: FreshM Id
+freshCont = do
+  (vCount, kCount) <- get
+  put (vCount, kCount + 1)
+  return $ "k" ++ show kCount
 
 type Id = String
 

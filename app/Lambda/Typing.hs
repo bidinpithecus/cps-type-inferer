@@ -1,6 +1,5 @@
 module Lambda.Typing where
 
-import Control.Monad.State (MonadState (get, put), State)
 import Data.List(nub, union)
 import Utils.Typing (Id, greekVar)
 
@@ -26,21 +25,6 @@ instance Show Expr where
           Lam _ _ -> "(" ++ show expr2 ++ ")"
           _ -> show expr2
      in e1 ++ " " ++ e2
-
--- Fresh variables
-type FreshM a = State (Int, Int) a
-
-freshVar :: FreshM Id
-freshVar = do
-  (vCount, kCount) <- get
-  put (vCount + 1, kCount)
-  return $ "v" ++ show vCount
-
-freshCont :: FreshM Id
-freshCont = do
-  (vCount, kCount) <- get
-  put (vCount, kCount + 1)
-  return $ "k" ++ show kCount
 
 data SimpleType =
   TVar Id

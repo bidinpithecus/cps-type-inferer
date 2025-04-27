@@ -43,11 +43,12 @@ tiContext g i = if l /= [] then t else error ("Undefined: " ++ i ++ "\n")
 
 tiExpr :: [Assump] -> Expr -> TI (SimpleType, Subst)
 tiExpr g (Var i) = return (tiContext g i, [])
-tiExpr g (App e e') = do (t, s1) <- tiExpr g e
-                         (t', s2) <- tiExpr (apply s1 g) e'
-                         b <- freshTVar
-                         let s3 = unify (apply s2 t) (t' --> b)
-                         return (apply s3 b, s3 @@ s2 @@ s1)
+tiExpr g (App e e') = do 
+  (t, s1) <- tiExpr g e
+  (t', s2) <- tiExpr (apply s1 g) e'
+  b <- freshTVar
+  let s3 = unify (apply s2 t) (t' --> b)
+  return (apply s3 b, s3 @@ s2 @@ s1)
 tiExpr g (Lam i e) = do b <- freshTVar
                         (t, s)  <- tiExpr (g/+/[i:>:b]) e
                         return (apply s (b --> t), s)
