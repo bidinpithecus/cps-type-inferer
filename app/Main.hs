@@ -9,13 +9,15 @@ import qualified Utils.Typing as Utils
 import qualified CPS.Typing as CpsInferer
 
 main :: IO ()
-main = do
-  putStrLn "Enter a lambda expression:"
-  input <- getLine
-  main2 input
+main = putStrLn "Input file path:" >> getLine >>= inferFromFile
 
-main2 :: String -> IO ()
-main2 input = do
+inferFromFile :: String -> IO ()
+inferFromFile filename = do
+  file <- readFile filename 
+  inferExpr file
+
+inferExpr :: String -> IO ()
+inferExpr input = do
   mainHelper input
 
 mainHelper :: String -> IO ()
@@ -43,7 +45,7 @@ inferAndCheck expr callStyle = do
 
   putStrLn "Command:"
   print command
-  putStrLn "Expected Type:"
+  putStrLn "Expected Continuation Type:"
   print expectedCPSType
 
   handleInferenceResult command expectedCPSType
@@ -72,7 +74,7 @@ handleInferenceError err = do
 
 handleSuccessfulInference :: CpsInferer.PolyType -> CpsInferer.PolyType -> IO ()
 handleSuccessfulInference inferredType expectedType = do
-  putStrLn "Inferred Type:"
+  putStrLn "Continuation Inferred Type:"
   print inferredType
   case CpsInferer.isSubtypeOfPoly inferredType expectedType of
     Left err -> handleSubtypeError err
@@ -90,17 +92,8 @@ handleSubtypeResult maybeSubtype = do
     Nothing -> putStrLn "No"
     Just _ -> putStrLn "Yes"
 
-var :: String
-var = "x"
-
-lam :: String
-lam = "\\x. e"
-
-app :: String
-app = "f e"
-
-lambdaId :: String
-lambdaId = "\\x. x"
+identity :: String
+identity = "\\x. x"
 
 churchZero :: String
 churchZero = "\\f. \\x. x"
