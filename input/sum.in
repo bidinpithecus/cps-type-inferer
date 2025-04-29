@@ -1,0 +1,1 @@
+(\n.\m.\f.\x.n f (m f x)) (\a.\b.a (a b)) (\c.\d.c (c (c d)))

@@ -20,13 +20,13 @@ initialCont = "k"
 
 -- | Appel-style notation: k⟨x₁, ..., xₙ⟩ and b { k⟨y₁, ..., yₙ⟩ = c }
 showAppel :: Command -> String
-showAppel cmd = showAppel' cmd 0 6
+showAppel cmd = showAppel' cmd 0 8
 
 showAppel' :: Command -> Int -> Int -> String
 showAppel' (Jump k xs) indentLevel _ = replicate indentLevel ' ' ++ k ++ "⟨" ++ intercalate ", " xs ++ "⟩"
 showAppel' (Bind b y ys c) indentLevel indentQtd =
   let body = case b of
-        Bind {} -> 
+        Bind {} ->
           let bodyStr = showAppel' b (indentLevel + indentQtd) indentQtd
           in replicate indentLevel ' ' ++ "(\n" ++ bodyStr ++ "\n" ++ replicate indentLevel ' ' ++ "⟩"
         _ -> showAppel' b indentLevel indentQtd

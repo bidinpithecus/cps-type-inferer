@@ -1,0 +1,203 @@
+cbv k =
+      let k0(v0) =
+            let k1(v1) =
+                  v0(v1, k)
+            in
+                  let v22(c, k22) =
+                        let v23(d, k23) =
+                              let k24(v24) =
+                                    let k25(v25) =
+                                          v24(v25, k23)
+                                    in
+                                          let k26(v26) =
+                                                let k27(v27) =
+                                                      v26(v27, k25)
+                                                in
+                                                      let k28(v28) =
+                                                            let k29(v29) =
+                                                                  v28(v29, k27)
+                                                            in
+                                                                  k29(d)
+                                                      in
+                                                            k28(c)
+                                          in
+                                                k26(c)
+                              in
+                                    k24(c)
+                        in
+                              k22(v23)
+                  in
+                        k1(v22)
+      in
+            let k2(v2) =
+                  let k3(v3) =
+                        v2(v3, k0)
+                  in
+                        let v16(a, k16) =
+                              let v17(b, k17) =
+                                    let k18(v18) =
+                                          let k19(v19) =
+                                                v18(v19, k17)
+                                          in
+                                                let k20(v20) =
+                                                      let k21(v21) =
+                                                            v20(v21, k19)
+                                                      in
+                                                            k21(b)
+                                                in
+                                                      k20(a)
+                                    in
+                                          k18(a)
+                              in
+                                    k16(v17)
+                        in
+                              k3(v16)
+            in
+                  let v4(n, k4) =
+                        let v5(m, k5) =
+                              let v6(f, k6) =
+                                    let v7(x, k7) =
+                                          let k8(v8) =
+                                                let k9(v9) =
+                                                      v8(v9, k7)
+                                                in
+                                                      let k12(v12) =
+                                                            let k13(v13) =
+                                                                  v12(v13, k9)
+                                                            in
+                                                                  k13(x)
+                                                      in
+                                                            let k14(v14) =
+                                                                  let k15(v15) =
+                                                                        v14(v15, k12)
+                                                                  in
+                                                                        k15(f)
+                                                            in
+                                                                  k14(m)
+                                          in
+                                                let k10(v10) =
+                                                      let k11(v11) =
+                                                            v10(v11, k8)
+                                                      in
+                                                            k11(f)
+                                                in
+                                                      k10(n)
+                                    in
+                                          k6(v7)
+                              in
+                                    k5(v6)
+                        in
+                              k4(v5)
+                  in
+                        k2(v4)
+
+cbn k =
+      let k0(v0) =
+            let v1(k1) =
+                  let v22(c, k22) =
+                        let v23(d, k23) =
+                              let k24(v24) =
+                                    let v25(k25) =
+                                          let k26(v26) =
+                                                let v27(k27) =
+                                                      let k28(v28) =
+                                                            let v29(k29) =
+                                                                  d(k29)
+                                                            in
+                                                                  v28(v29, k27)
+                                                      in
+                                                            c(k28)
+                                                in
+                                                      v26(v27, k25)
+                                          in
+                                                c(k26)
+                                    in
+                                          v24(v25, k23)
+                              in
+                                    c(k24)
+                        in
+                              k22(v23)
+                  in
+                        k1(v22)
+            in
+                  v0(v1, k)
+      in
+            let k2(v2) =
+                  let v3(k3) =
+                        let v16(a, k16) =
+                              let v17(b, k17) =
+                                    let k18(v18) =
+                                          let v19(k19) =
+                                                let k20(v20) =
+                                                      let v21(k21) =
+                                                            b(k21)
+                                                      in
+                                                            v20(v21, k19)
+                                                in
+                                                      a(k20)
+                                          in
+                                                v18(v19, k17)
+                                    in
+                                          a(k18)
+                              in
+                                    k16(v17)
+                        in
+                              k3(v16)
+                  in
+                        v2(v3, k0)
+            in
+                  let v4(n, k4) =
+                        let v5(m, k5) =
+                              let v6(f, k6) =
+                                    let v7(x, k7) =
+                                          let k8(v8) =
+                                                let v9(k9) =
+                                                      let k12(v12) =
+                                                            let v13(k13) =
+                                                                  x(k13)
+                                                            in
+                                                                  v12(v13, k9)
+                                                      in
+                                                            let k14(v14) =
+                                                                  let v15(k15) =
+                                                                        f(k15)
+                                                                  in
+                                                                        v14(v15, k12)
+                                                            in
+                                                                  m(k14)
+                                                in
+                                                      v8(v9, k7)
+                                          in
+                                                let k10(v10) =
+                                                      let v11(k11) =
+                                                            f(k11)
+                                                      in
+                                                            v10(v11, k8)
+                                                in
+                                                      n(k10)
+                                    in
+                                          k6(v7)
+                              in
+                                    k5(v6)
+                        in
+                              k4(v5)
+                  in
+                        k2(v4)
+
+--------------------------------------------------------------------------------
+
+inc_cbv :: (Int, Int -> r) -> r
+inc_cbv (n, k) = k (1 + n)
+
+test_cbv =
+    cbv (\f -> f (inc_cbv, \x -> x (0, id)))
+
+thunk :: a -> (a -> r) -> r
+thunk x k = k x
+
+inc_cbn :: (Int -> r, Int) -> r
+inc_cbn (k, n) =
+    inc_cbv (n, k)
+
+test_cbn =
+    cbn (\f -> f (thunk inc_cbn, \x -> x (id, 0)))

@@ -13,7 +13,7 @@ main = putStrLn "Input file path:" >> getLine >>= inferFromFile
 
 inferFromFile :: String -> IO ()
 inferFromFile filename = do
-  file <- readFile filename 
+  file <- readFile filename
   inferExpr file
 
 inferExpr :: String -> IO ()
@@ -50,11 +50,11 @@ inferAndCheck expr callStyle = do
 
   handleInferenceResult command expectedCPSType
 
-getTypeAndCommand :: Utils.CallStyle -> LambdaTyping.SimpleType -> LambdaTyping.Expr 
+getTypeAndCommand :: Utils.CallStyle -> LambdaTyping.SimpleType -> LambdaTyping.Expr
                   -> (CpsInferer.PolyType, CpsInferer.Command)
 getTypeAndCommand callStyle lambdaType expr =
   case callStyle of
-    Utils.CBN -> (CPSTranslation.cbnTypeTranslation lambdaType, 
+    Utils.CBN -> (CPSTranslation.cbnTypeTranslation lambdaType,
                  CPSTranslation.cbnExprTranslation expr)
     Utils.CBV -> (CPSTranslation.cbvTypeTranslation lambdaType,
                  CPSTranslation.cbvExprTranslation expr)
@@ -62,7 +62,7 @@ getTypeAndCommand callStyle lambdaType expr =
 handleInferenceResult :: CpsInferer.Command -> CpsInferer.PolyType -> IO ()
 handleInferenceResult command expectedType = do
   let inferredType = CpsInferer.runTI (CpsInferer.inferWithCtx command)
-  
+
   case inferredType of
     Left err -> handleInferenceError err
     Right inferredType' -> handleSuccessfulInference inferredType' expectedType
