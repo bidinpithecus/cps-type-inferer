@@ -50,8 +50,8 @@ inferAndCheck expr callStyle = do
 
   handleInferenceResult command expectedCPSType
 
-getTypeAndCommand :: Utils.CallStyle -> LambdaTyping.SimpleType -> LambdaTyping.Expr
-                  -> (CpsInferer.PolyType, CpsInferer.Command)
+getTypeAndCommand :: Utils.CallStyle -> LambdaTyping.LambdaMonoType -> LambdaTyping.Expr 
+                  -> (CpsInferer.CPSPolyType, CpsInferer.Command)
 getTypeAndCommand callStyle lambdaType expr =
   case callStyle of
     Utils.CBN -> (CPSTranslation.cbnTypeTranslation lambdaType,
@@ -59,7 +59,7 @@ getTypeAndCommand callStyle lambdaType expr =
     Utils.CBV -> (CPSTranslation.cbvTypeTranslation lambdaType,
                  CPSTranslation.cbvExprTranslation expr)
 
-handleInferenceResult :: CpsInferer.Command -> CpsInferer.PolyType -> IO ()
+handleInferenceResult :: CpsInferer.Command -> CpsInferer.CPSPolyType -> IO ()
 handleInferenceResult command expectedType = do
   let inferredType = CpsInferer.runTI (CpsInferer.inferWithCtx command)
 
@@ -72,7 +72,7 @@ handleInferenceError err = do
   putStrLn "Type Error in Inference:"
   print err
 
-handleSuccessfulInference :: CpsInferer.PolyType -> CpsInferer.PolyType -> IO ()
+handleSuccessfulInference :: CpsInferer.CPSPolyType -> CpsInferer.CPSPolyType -> IO ()
 handleSuccessfulInference inferredType expectedType = do
   putStrLn "Continuation Inferred Type:"
   print inferredType

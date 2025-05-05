@@ -6,28 +6,37 @@ import Text.Parsec
 import Text.Parsec.String (Parser)
 
 parseExpression :: String -> Either ParseError Expr
-parseExpression = parse parseExpr "Erro:"
+parseExpression = parse (spacesAndComments *> parseExpr <* eof) ""
 
 parseExpr :: Parser Expr
-parseExpr = try parseApp <|> parseLam <|> parseVar <|> parens parseExpr
+parseExpr = parseLet <|> parseLam <|> parseAppChain
+
+parseTerm :: Parser Expr
+parseTerm = parens parseExpr <|> parseVar
 
 parseVar :: Parser Expr
-parseVar = identifier >>= \i -> return $ Var i
+parseVar = identifier >>= \i -> return (Var i) <?> "variable"
 
 parseLam :: Parser Expr
-parseLam =
-  do
-    _ <- symbol "\\"
-    i <- identifier
-    _ <- symbol "."
-    Lam i <$> parseExpr
+parseLam = do
+    vars <- try $ do
+        _ <- symbol "\\" <|> symbol "λ"
+        vars <- many1 identifier
+        _ <- symbol "."
+        return vars
+    body <- parseExpr
+    return (foldr Lam body vars) <?> "lambda abstraction"
 
-parseSimpleExpr :: Parser Expr
-parseSimpleExpr = parseVar <|> parens parseExpr
+parseAppChain :: Parser Expr
+parseAppChain = do
+    terms <- many1 parseTerm
+    return (foldl1 App terms) <?> "application"
 
-parseApp :: Parser Expr
-parseApp =
-  do
-    e1 <- parseSimpleExpr
-    e2 <- many1 parseSimpleExpr
-    return $ foldl App e1 e2
+parseLet :: Parser Expr
+parseLet = try $ do
+    reserved "let"
+    name <- identifier
+    reservedOp "="
+    value <- parseExpr
+    reserved "in"
+    Let name value <$> parseExpr

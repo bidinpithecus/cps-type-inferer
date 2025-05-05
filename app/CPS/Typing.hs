@@ -35,7 +35,7 @@ showAppel' (Bind b y ys c) indentLevel indentQtd =
 
 -- | Thielecke-style notation: k(x₁, ..., xₙ) and let k(y₁, ..., yₙ) = c in b
 showThielecke :: Command -> String
-showThielecke cmd = showThielecke' cmd 0 6
+showThielecke cmd = showThielecke' cmd 0 8
 
 showThielecke' :: Command -> Int -> Int -> String
 showThielecke' (Jump k xs) indentLevel _ = replicate indentLevel ' ' ++ k ++ "(" ++ intercalate ", " xs ++ ")"
@@ -48,29 +48,29 @@ showThielecke' (Bind b y ys c) indentLevel indentQtd =
 
 -- | CPS Monotypes:
 --   * Type variables (α), integers (int), negation types (¬[τ])
-data MonoType
+data CPSMonoType
   = TVar Id
   | TInt
-  | TNeg [MonoType]
+  | TNeg [CPSMonoType]
   deriving (Eq)
 
 -- | CPS Polytypes: Universally quantified types (∀α.τ)
-data PolyType
-  = Forall [Id] MonoType
+data CPSPolyType
+  = Forall [Id] CPSMonoType
   deriving (Eq)
 
 -- | Typing context mapping variables to polytypes
-type Context = Map.Map Id PolyType
+type Context = Map.Map Id CPSPolyType
 
 -- | Substitution mapping type variables to monotypes
-type Substitution = Map.Map Id MonoType
+type Substitution = Map.Map Id CPSMonoType
 
-instance Show PolyType where
+instance Show CPSPolyType where
   show (Forall vars t)
     | null vars = show t
     | otherwise = "∀" ++ intercalate "," vars ++ ". " ++ show t
 
-instance Show MonoType where
+instance Show CPSMonoType where
   show (TVar v) = v
   show TInt = "int"
   show (TNeg [t]) = "¬" ++ show t

@@ -8,16 +8,16 @@ import qualified Data.Map as Map
 import Data.List (nub)
 import Text.Read (readMaybe)
 import CPS.Typing
-    ( Command(..), Context, MonoType(..), PolyType(..), Substitution, initialCont )
+    ( Command(..), Context, CPSMonoType(..), CPSPolyType(..), Substitution, initialCont )
 import Utils.Typing (greekVar, Id, greekLetters)
 import qualified Data.Maybe
 import Control.Monad (foldM, replicateM)
 
 -- | Type inference errors
 data TypeError
-  = OccursCheck String MonoType
-  | Mismatch MonoType MonoType
-  | ArityMismatch [MonoType] [MonoType]
+  = OccursCheck String CPSMonoType
+  | Mismatch CPSMonoType CPSMonoType
+  | ArityMismatch [CPSMonoType] [CPSMonoType]
   | UnboundVariable String Context
   deriving (Show)
 
@@ -27,7 +27,7 @@ type TI a = StateT Int (Except TypeError) a
 runTI :: TI a -> Either TypeError a
 runTI m = runExcept (evalStateT m 0)
 
-freshTVar :: TI MonoType
+freshTVar :: TI CPSMonoType
 freshTVar = do
   n <- get
   modify (+1)
@@ -37,7 +37,7 @@ freshTVar = do
 --   1. Collect variables in `TVar`
 --   2. Ignore `TInt`
 --   3. Recurse into `TNeg` components
-ftvMono :: MonoType -> [String]
+ftvMono :: CPSMonoType -> [String]
 ftvMono (TVar v)     = [v]
 ftvMono TInt         = []
 ftvMono (TNeg ts)    = nub $ concatMap ftvMono ts
@@ -45,7 +45,7 @@ ftvMono (TNeg ts)    = nub $ concatMap ftvMono ts
 -- | Compute FTV of a polytype `∀α.τ`.
 --   1. Compute FTV of `τ`
 --   2. Subtract bound variables `α`
-ftvPoly :: PolyType -> [String]
+ftvPoly :: CPSPolyType -> [String]
 ftvPoly (Forall vars t) = filter (`notElem` vars) (ftvMono t)
 
 -- | Compute FTV of a context.
@@ -56,7 +56,7 @@ ftvContext ctx = nub $ concatMap ftvPoly (Map.elems ctx)
 -- | Apply substitution to a monotype recursively.
 --   1. Replace variables using substitution `s`
 --   2. Recurse into `TNeg` components
-applySubst :: Substitution -> MonoType -> MonoType
+applySubst :: Substitution -> CPSMonoType -> CPSMonoType
 applySubst s (TVar v)    = case Map.lookup v s of
                              Just t  -> t
                              Nothing -> TVar v
@@ -64,7 +64,7 @@ applySubst _ TInt        = TInt
 applySubst s (TNeg ts)   = TNeg (map (applySubst s) ts)
 
 -- | Apply substitution to a polytype
-applySubstToPoly :: Substitution -> PolyType -> PolyType
+applySubstToPoly :: Substitution -> CPSPolyType -> CPSPolyType
 applySubstToPoly s (Forall vars t) = Forall vars (applySubst s t)
 
 -- | Apply substitution to a context by updating all polytypes.
@@ -80,7 +80,7 @@ composeSubst :: Substitution -> Substitution -> Substitution
 composeSubst s1 s2 = Map.map (applySubst s1) s2 `Map.union` s1
 
 -- | Check if a variable occurs in a type (for unification)
-occursCheck :: String -> MonoType -> Bool
+occursCheck :: String -> CPSMonoType -> Bool
 occursCheck u (TVar v)    = u == v
 occursCheck _ TInt        = False
 occursCheck u (TNeg ts)   = any (occursCheck u) ts
@@ -89,7 +89,7 @@ occursCheck u (TNeg ts)   = any (occursCheck u) ts
 --   1. If `u ≡ t`, return empty substitution
 --   2. Check if `u` occurs in `t` (prevents cyclic types)
 --   3. Return substitution `[u ↦ t]` if safe
-varBind :: String -> MonoType -> TI Substitution
+varBind :: String -> CPSMonoType -> TI Substitution
 varBind u t
   | t == TVar u       = return Map.empty
   | occursCheck u t   = throwError $ OccursCheck u t
@@ -100,7 +100,7 @@ varBind u t
 --   2. Unify `TInt` with `TInt` (no substitution)
 --   3. For negations `TNeg`, check arity matches, then unify component-wise
 --   4. Throw `Mismatch` for all other cases
-mgu :: MonoType -> MonoType -> TI Substitution
+mgu :: CPSMonoType -> CPSMonoType -> TI Substitution
 mgu (TVar u) t = varBind u t
 mgu t (TVar u) = varBind u t
 mgu TInt TInt  = return Map.empty
@@ -110,7 +110,7 @@ mgu (TNeg ts1) (TNeg ts2)
 mgu t1 t2 = throwError $ Mismatch t1 t2
 
 -- | Unify lists of types component-wise
-mguLists :: [MonoType] -> [MonoType] -> TI Substitution
+mguLists :: [CPSMonoType] -> [CPSMonoType] -> TI Substitution
 mguLists [] [] = return Map.empty
 mguLists (t:ts) (s:ss) = do
   subst1 <- mgu t s
@@ -122,7 +122,7 @@ mguLists _ _ = throwError $ ArityMismatch [] []
 --   1. For each quantified variable in `∀α.τ`, generate a fresh type variable
 --   2. Substitute `α` with fresh variables in `τ`
 --   3. Return the resulting monotype
-instantiate :: PolyType -> TI MonoType
+instantiate :: CPSPolyType -> TI CPSMonoType
 instantiate (Forall vars t) = do
   freshVars <- mapM (const freshTVar) vars
   let s = Map.fromList (zip vars freshVars)
@@ -132,7 +132,7 @@ instantiate (Forall vars t) = do
 --   1. Compute free type variables (FTV) of the monotype `t`
 --   2. Subtract FTV of the current context `ctx` (to avoid capturing bound vars)
 --   3. Quantify the remaining FTVs as `∀α.τ`
-generalize :: Context -> MonoType -> PolyType
+generalize :: Context -> CPSMonoType -> CPSPolyType
 generalize ctx t = Forall vars t
   where
     ctxFtvs = ftvContext ctx
@@ -144,7 +144,7 @@ generalize ctx t = Forall vars t
 --      a. Look up its polytype in the context
 --      b. Instantiate it to a fresh monotype
 --   3. Return substitution and inferred monotype
-inferAtom :: Context -> String -> TI (Substitution, MonoType)
+inferAtom :: Context -> String -> TI (Substitution, CPSMonoType)
 inferAtom ctx x =
   case readMaybe x :: Maybe Integer of
     Just _  -> return (Map.empty, TInt)
@@ -155,7 +155,7 @@ inferAtom ctx x =
                  Nothing -> throwError $ UnboundVariable x ctx
 
 -- | Extend context with parameters and their types
-extendContextWithParams :: Context -> [Id] -> [MonoType] -> Context
+extendContextWithParams :: Context -> [Id] -> [CPSMonoType] -> Context
 extendContextWithParams ctx ys paramTypes =
   foldl (\acc (p, τ) -> Map.insert p (Forall [] τ) acc) ctx (zip ys paramTypes)
 
@@ -197,7 +197,7 @@ inferCommand ctx (Bind b y ys c) = do
 --   2. Infer substitution `subst` for the command
 --   3. Apply `subst` to the initial context
 --   4. Return final substitution and context
-inferWithCtx :: Command -> TI PolyType
+inferWithCtx :: Command -> TI CPSPolyType
 inferWithCtx cmd = do
   initialType <- freshTVar
   let ctx = Map.singleton initialCont (Forall [] initialType)
@@ -213,21 +213,21 @@ inferWithCtx cmd = do
     Nothing -> throwError (UnboundVariable initialCont ctx)
 
 -- | Normalize quantified variables to α, β, γ, etc.
-normalizePolyType :: PolyType -> PolyType
+normalizePolyType :: CPSPolyType -> CPSPolyType
 normalizePolyType (Forall vars t) =
   let newVars = take (length vars) greekLetters
       subst   = zip vars newVars
       t'      = applySubstToMono subst t
   in Forall newVars t'
 
-applySubstToMono :: [(String, String)] -> MonoType -> MonoType
+applySubstToMono :: [(String, String)] -> CPSMonoType -> CPSMonoType
 applySubstToMono subst = go
   where
     go (TVar v)     = TVar $ Data.Maybe.fromMaybe v (lookup v subst)
     go TInt         = TInt
     go (TNeg ts)    = TNeg (map go ts)
 
-isSubtypeOfPoly :: PolyType -> PolyType -> Either TypeError (Maybe Substitution)
+isSubtypeOfPoly :: CPSPolyType -> CPSPolyType -> Either TypeError (Maybe Substitution)
 isSubtypeOfPoly (Forall vars1 t1) (Forall vars2 t2) = 
   runTI $ do
     freshVars1 <- replicateM (length vars1) freshTVar
@@ -236,10 +236,10 @@ isSubtypeOfPoly (Forall vars1 t1) (Forall vars2 t2) =
     let subst2 = Map.fromList (zip vars2 freshVars2)
     pure $ isSubtypeOf (applySubst subst1 t1) (applySubst subst2 t2)
 
-isSubtypeOf :: MonoType -> MonoType -> Maybe Substitution
+isSubtypeOf :: CPSMonoType -> CPSMonoType -> Maybe Substitution
 isSubtypeOf t1 t2 = match t1 t2 Map.empty
   where
-    match :: MonoType -> MonoType -> Substitution -> Maybe Substitution
+    match :: CPSMonoType -> CPSMonoType -> Substitution -> Maybe Substitution
     match (TVar a) t subst =
         case Map.lookup a subst of
             Just tExisting -> if tExisting == t then Just subst else Nothing

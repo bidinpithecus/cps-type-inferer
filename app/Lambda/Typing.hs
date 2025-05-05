@@ -1,16 +1,18 @@
 module Lambda.Typing where
 
-import Data.List(nub, union)
+import Data.List(nub, union, (\\))
 import Utils.Typing (Id, greekVar)
 
--- ADT representing Lambda expressions
+-- ADT representing Simply Typed Lambda Calculus
 -- x
 -- \x. e
 -- e e
+-- let e = e in e
 data Expr
   = Var Id
   | Lam Id Expr
   | App Expr Expr
+  | Let Id Expr Expr
   deriving (Eq)
 
 instance Show Expr where
@@ -25,18 +27,23 @@ instance Show Expr where
           Lam _ _ -> "(" ++ show expr2 ++ ")"
           _ -> show expr2
      in e1 ++ " " ++ e2
+  show (Let var e1 e2) = "let " ++ var ++ " = " ++ show e1 ++ " in " ++ show e2
 
-data SimpleType =
+data LambdaMonoType =
   TVar Id
-  | TArr SimpleType SimpleType
+  | TArr LambdaMonoType LambdaMonoType
+  deriving (Eq)
+
+data LambdaPolyType = 
+  Forall [Id] LambdaMonoType
   deriving (Eq)
 
 type Index  = Int
 newtype TI a = TI (Index -> (a, Index))
-type Subst  = [(Id, SimpleType)]
-data Assump = Id :>: SimpleType deriving (Eq, Show)
+type Subst  = [(Id, LambdaMonoType)]
+data Assump = Id :>: LambdaPolyType deriving (Eq)
 
-instance Show SimpleType where
+instance Show LambdaMonoType where
    show (TVar i) = i
    show (TArr (TVar i) t) = i ++ " -> "++ show t
    show (TArr t t') = "(" ++ show t ++ ")" ++ " -> " ++ show t'
@@ -51,13 +58,13 @@ instance Applicative TI where
 instance Monad TI where
    TI m >>= f  = TI (\e -> let (a, e') = m e; TI fa = f a in fa e')
 
-freshTVar :: TI SimpleType
+freshTVar :: TI LambdaMonoType
 freshTVar = TI (\e -> let v = greekVar e in (TVar v, e + 1))
 
 runTI :: TI a -> a
 runTI (TI m) = let (t, _) = m 0 in t
 
-(-->) :: SimpleType -> SimpleType -> SimpleType
+(-->) :: LambdaMonoType -> LambdaMonoType -> LambdaMonoType
 t --> t' = TArr t t'
 
 infixr 4 @@
@@ -77,7 +84,7 @@ class Subs t where
   apply :: Subst -> t -> t
   tv    :: t -> [Id]
 
-instance Subs SimpleType where
+instance Subs LambdaMonoType where
   apply s (TVar u)  =
                     case lookup u s of
                        Just t  -> t
@@ -90,6 +97,10 @@ instance Subs SimpleType where
 instance Subs a => Subs [a] where
   apply s     = map (apply s)
   tv          = nub . concatMap tv
+
+instance Subs LambdaPolyType where
+  apply s (Forall vs t) = Forall vs (apply (filter (\(v, _) -> v `notElem` vs) s) t)
+  tv (Forall vs t) = tv t \\ vs
 
 instance Subs Assump where
   apply s (i:>:t) = i:>:apply s t
