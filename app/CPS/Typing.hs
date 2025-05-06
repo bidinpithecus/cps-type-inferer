@@ -35,15 +35,23 @@ showAppel' (Bind b y ys c) indentLevel indentQtd =
 
 -- | Thielecke-style notation: k(x₁, ..., xₙ) and let k(y₁, ..., yₙ) = c in b
 showThielecke :: Command -> String
-showThielecke cmd = showThielecke' cmd 0 8
+showThielecke cmd = prettyPrintThielecke cmd 0 8
 
-showThielecke' :: Command -> Int -> Int -> String
-showThielecke' (Jump k xs) indentLevel _ = replicate indentLevel ' ' ++ k ++ "(" ++ intercalate ", " xs ++ ")"
-showThielecke' (Bind b y ys c) indentLevel indentQtd =
+flatPrintThielecke :: Command -> String
+flatPrintThielecke (Jump k xs) = k ++ "(" ++ intercalate ", " xs ++ ")"
+flatPrintThielecke (Bind b y ys c) =
+  let body = case b of
+        Bind {} -> "(" ++ flatPrintThielecke b ++ ")"
+        _ -> flatPrintThielecke b
+   in "let " ++ y ++ "(" ++ intercalate ", " ys ++ ") = " ++ flatPrintThielecke c ++ " in " ++ body
+
+prettyPrintThielecke :: Command -> Int -> Int -> String
+prettyPrintThielecke (Jump k xs) indentLevel _ = replicate indentLevel ' ' ++ k ++ "(" ++ intercalate ", " xs ++ ")"
+prettyPrintThielecke (Bind b y ys c) indentLevel indentQtd =
   let letLine = replicate indentLevel ' ' ++ "let " ++ y ++ "(" ++ intercalate ", " ys ++ ") ="
-      cStr = showThielecke' c (indentLevel + indentQtd) indentQtd
+      cStr = prettyPrintThielecke c (indentLevel + indentQtd) indentQtd
       inLine = replicate indentLevel ' ' ++ "in"
-      bodyStr = showThielecke' b (indentLevel + indentQtd) indentQtd
+      bodyStr = prettyPrintThielecke b (indentLevel + indentQtd) indentQtd
   in intercalate "\n" [letLine, cStr, inLine, bodyStr]
 
 -- | CPS Monotypes:
