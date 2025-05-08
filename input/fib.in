@@ -1,0 +1,19 @@
+let zero = \f. \x. x in
+let one = \f. \x. f x in
+let succ = \n. \f. \x. f (n f x) in
+let plus = \m. \n. \f. \x. m f (n f x) in
+let pair = \a. \b. \f. f a b in
+let fst = \p. p (\x. \y. x) in
+let snd = \p. p (\x. \y. y) in
+let two = succ one in
+let three = succ two in
+let four = succ three in
+let five = succ four in
+let six = succ five in
+let seven = succ six in
+let eight = succ seven in
+let nine = succ eight in
+let ten = succ nine in
+let fib_aux = \p. pair (snd p) (plus (fst p) (snd p)) in
+let fib = \n. fst (n fib_aux (pair zero one)) in
+fib ten
