@@ -143,15 +143,15 @@ generalize ctx t = Forall vars t
 --   2. If `x` is a variable:
 --      a. Look up its polytype in the context
 --      b. Instantiate it to a fresh monotype
---   3. Return substitution and inferred monotype
-inferAtom :: Context -> String -> TI (Substitution, CPSMonoType)
+--   3. Return inferred monotype
+inferAtom :: Context -> String -> TI CPSMonoType
 inferAtom ctx x =
   case readMaybe x :: Maybe Integer of
-    Just _  -> return (Map.empty, TInt)
+    Just _  -> return TInt
     Nothing -> case Map.lookup x ctx of
                  Just poly -> do
                    t <- instantiate poly
-                   return (Map.empty, t)
+                   return t
                  Nothing -> throwError $ UnboundVariable x ctx
 
 -- | Extend context with parameters and their types
@@ -160,19 +160,16 @@ extendContextWithParams ctx ys paramTypes =
   foldl (\acc (p, τ) -> Map.insert p (Forall [] τ) acc) ctx (zip ys paramTypes)
 
 -- | Infer types for a CPS command (Jump: `k(a₁,...,aₙ`).
---   1. Infer type `tK` for continuation `k` (substitution `s1`)
---   2. Apply `s1` to the context, then infer types for args `a₁...aₙ`
---   3. Compose substitutions from args into `sArgs`
---   4. Unify `tK` with `¬[τ₁,...,τₙ]` (where `τᵢ` are arg types)
---   5. Return total substitution `s2 ∘ s1`
+--   1. Infer type `t1` for continuation `k`
+--   2. Infer `¬[τ₁,...,τₙ]` (where `τᵢ` are arg types)
+--   3. Unify `t1` with `¬[τ₁,...,τₙ]`
+--   4. Return substitution
 inferCommand :: Context -> Command -> TI Substitution
 inferCommand ctx (Jump k xs) = do
-  (s1, tK) <- inferAtom ctx k
-  atomResults <- mapM (inferAtom (applySubstToContext s1 ctx)) xs
-  let sArgs    = foldl composeSubst Map.empty (map fst atomResults)
-      argsTypes = map snd atomResults
-  s2 <- mgu (applySubst sArgs tK) (TNeg argsTypes)
-  return (composeSubst s2 s1)
+  t1 <- inferAtom ctx k
+  t2 <- mapM (inferAtom ctx) xs
+  s <- mgu t1 (TNeg t2)
+  return s
 
 -- | Infer types for a CPS command (Bind: `let k(x₁...xₙ) = c in b`).
 --   1. Generate fresh type variables `τ₁...τₙ` for parameters `x₁...xₙ`
