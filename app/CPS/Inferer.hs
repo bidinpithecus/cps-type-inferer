@@ -5,7 +5,7 @@ import Control.Monad.State
 import Control.Monad.Except
     ( MonadError(throwError), runExcept, Except )
 import qualified Data.Map as Map
-import Data.List (nub)
+import Data.List (nub, intercalate)
 import Text.Read (readMaybe)
 import CPS.Typing
     ( Command(..), Context, CPSMonoType(..), CPSPolyType(..), Substitution, initialCont )
@@ -19,7 +19,14 @@ data TypeError
   | Mismatch CPSMonoType CPSMonoType
   | ArityMismatch [CPSMonoType] [CPSMonoType]
   | UnboundVariable String Context
-  deriving (Show)
+
+instance Show TypeError where
+  show (OccursCheck v t) = "OccursCheck: " ++ v ++ " in " ++ show t
+  show (Mismatch t1 t2) = "Mismatch: " ++ show t1 ++ " and " ++ show t2
+  show (ArityMismatch ts1 ts2) = "ArityMismatch: expected " ++ show (length ts1) 
+      ++ " args (" ++ intercalate ", " (map show ts1) 
+      ++ "), got " ++ show (length ts2) ++ " (" ++ intercalate ", " (map show ts2) ++ ")"
+  show (UnboundVariable v _) = "UnboundVariable: " ++ v
 
 -- | Type inference monad: State for fresh variables + Except for errors
 type TI a = StateT Int (Except TypeError) a
